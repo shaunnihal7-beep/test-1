@@ -169,7 +169,7 @@ async def unlock_premium_analysis(request: PremiumUnlockRequest):
         
         # Generate recommendations
         score = evaluation_record['total_score']
-        recommendations = self._generate_recommendations(score, evaluation_record['startup_type'])
+        recommendations = _generate_recommendations(score, evaluation_record['startup_type'])
         
         return {
             "success": True,
