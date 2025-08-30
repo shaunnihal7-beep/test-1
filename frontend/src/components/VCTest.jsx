@@ -8,18 +8,34 @@ import { toast } from '../hooks/use-toast';
 import QuestionnaireSection from './QuestionnaireSection';
 import ScoreDisplay from './ScoreDisplay';
 import PremiumUnlock from './PremiumUnlock';
-import { calculateScore, validateFormData, checkAntiGaming } from '../utils/vcTestUtils';
 import { mockData } from '../data/mockData';
+import { 
+  generateCSRFToken, 
+  generateUUID, 
+  validateSubmission, 
+  submitEvaluation 
+} from '../services/vcTestApi';
 
 const VCTest = () => {
   const [startupType, setStartupType] = useState('');
   const [formData, setFormData] = useState({});
   const [expandedSections, setExpandedSections] = useState({});
   const [completionPercentages, setCompletionPercentages] = useState({});
-  const [totalScore, setTotalScore] = useState(0);
+  const [evaluationResult, setEvaluationResult] = useState(null);
   const [showResults, setShowResults] = useState(false);
   const [isPremiumUnlocked, setIsPremiumUnlocked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [startTime] = useState(Date.now());
+  const [sessionMetadata] = useState({
+    start_time: Date.now(),
+    csrf_token: generateCSRFToken(),
+    user_uuid: generateUUID()
+  });
+
+  // Add honeypot field (hidden from users)
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, _bot_field: '' }));
+  }, []);
 
   const sections = mockData.sections;
 
@@ -31,28 +47,35 @@ const VCTest = () => {
         const sectionFields = section.fields;
         const completedFields = sectionFields.filter(field => {
           const value = formData[field.id];
-          return value !== undefined && value !== '' && value !== null;
+          return value !== undefined && value !== '' && value !== null && 
+                 (!Array.isArray(value) || value.length > 0);
         }).length;
         percentages[section.id] = Math.round((completedFields / sectionFields.length) * 100);
       }
     });
+
+    // Add launched-specific sections
+    if (startupType === 'launched') {
+      mockData.launchedSections.forEach(section => {
+        const sectionFields = section.fields;
+        const completedFields = sectionFields.filter(field => {
+          const value = formData[field.id];
+          return value !== undefined && value !== '' && value !== null;
+        }).length;
+        percentages[section.id] = Math.round((completedFields / sectionFields.length) * 100);
+      });
+    }
+
     setCompletionPercentages(percentages);
   }, [formData, startupType, sections]);
 
-  useEffect(() => {
-    // Calculate total score when form data changes
-    if (startupType && Object.keys(completionPercentages).length > 0) {
-      const score = calculateScore(formData, startupType, sections);
-      setTotalScore(score);
-    }
-  }, [formData, startupType, completionPercentages, sections]);
-
   const handleStartupTypeSelect = (type) => {
     setStartupType(type);
-    setFormData({});
+    setFormData({ _bot_field: '' }); // Reset with honeypot
     setExpandedSections({});
     setShowResults(false);
-    setTotalScore(0);
+    setEvaluationResult(null);
+    setIsPremiumUnlocked(false);
   };
 
   const toggleSection = (sectionId) => {
@@ -70,35 +93,58 @@ const VCTest = () => {
   };
 
   const handleSubmit = async () => {
-    // Anti-gaming checks
-    const timeSpent = Date.now() - startTime;
-    const antiGamingResult = checkAntiGaming(formData, timeSpent);
+    setIsLoading(true);
     
-    if (!antiGamingResult.isValid) {
+    try {
+      // First validate the submission
+      const validation = await validateSubmission(formData, sessionMetadata, startupType);
+      
+      if (!validation.success) {
+        const errorMessage = validation.validation_errors?.length > 0 
+          ? `Validation errors: ${validation.validation_errors.join(', ')}`
+          : validation.anti_gaming_flags?.length > 0 
+            ? `Security check failed: ${validation.anti_gaming_flags.join(', ')}`
+            : 'Validation failed';
+        
+        toast({
+          title: "Submission Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Submit for evaluation
+      const result = await submitEvaluation(formData, sessionMetadata, startupType);
+      
+      if (!result.success) {
+        toast({
+          title: "Evaluation Error",
+          description: result.error || 'Failed to evaluate startup',
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEvaluationResult(result.data);
+      setShowResults(true);
+      
       toast({
-        title: "Submission Error",
-        description: antiGamingResult.message,
+        title: "Analysis Complete! 🎉",
+        description: "Your startup has been evaluated by our AI system.",
+        duration: 5000
+      });
+
+    } catch (error) {
+      console.error('Submission error:', error);
+      toast({
+        title: "System Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    // Validate required fields
-    const validation = validateFormData(formData, startupType, sections);
-    if (!validation.isValid) {
-      toast({
-        title: "Please complete all required fields",
-        description: `Missing fields: ${validation.missingFields.join(', ')}`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setShowResults(true);
-    toast({
-      title: "Analysis Complete!",
-      description: "Your startup has been evaluated by our AI system."
-    });
   };
 
   const getScoreIcon = (score) => {
@@ -120,6 +166,10 @@ const VCTest = () => {
   const overallCompletion = Object.keys(completionPercentages).length > 0 
     ? Math.round(Object.values(completionPercentages).reduce((a, b) => a + b, 0) / Object.keys(completionPercentages).length)
     : 0;
+
+  const allSections = startupType === 'launched' 
+    ? [...sections.filter(s => s.stages.includes('both') || s.stages.includes(startupType)), ...mockData.launchedSections]
+    : sections.filter(s => s.stages.includes('both') || s.stages.includes(startupType));
 
   if (!startupType) {
     return (
@@ -215,49 +265,54 @@ const VCTest = () => {
 
           {/* Questionnaire Sections */}
           <div className="space-y-6 mb-8">
-            {sections
-              .filter(section => 
-                section.stages.includes('both') || 
-                section.stages.includes(startupType)
-              )
-              .map((section) => (
-                <QuestionnaireSection
-                  key={section.id}
-                  section={section}
-                  isExpanded={expandedSections[section.id]}
-                  onToggle={() => toggleSection(section.id)}
-                  completion={completionPercentages[section.id] || 0}
-                  formData={formData}
-                  updateFormData={updateFormData}
-                />
-              ))}
+            {allSections.map((section) => (
+              <QuestionnaireSection
+                key={section.id}
+                section={section}
+                isExpanded={expandedSections[section.id]}
+                onToggle={() => toggleSection(section.id)}
+                completion={completionPercentages[section.id] || 0}
+                formData={formData}
+                updateFormData={updateFormData}
+              />
+            ))}
           </div>
 
           {/* Submit Button */}
           <div className="text-center mb-8">
             <Button 
               onClick={handleSubmit}
-              disabled={overallCompletion < 100}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-8 py-3 text-lg font-semibold"
+              disabled={overallCompletion < 100 || isLoading}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-8 py-3 text-lg font-semibold disabled:opacity-50"
             >
-              {overallCompletion < 100 ? `Complete Form (${overallCompletion}%)` : 'Get My VC Analysis'}
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                  Analyzing...
+                </>
+              ) : overallCompletion < 100 ? 
+                `Complete Form (${overallCompletion}%)` : 
+                'Get My VC Analysis'
+              }
             </Button>
           </div>
 
           {/* Results */}
-          {showResults && (
+          {showResults && evaluationResult && (
             <div className="space-y-8">
               <ScoreDisplay 
-                score={totalScore}
-                verdict={getScoreVerdict(totalScore)}
-                icon={getScoreIcon(totalScore)}
+                score={evaluationResult.total_score}
+                verdict={evaluationResult.verdict}
+                icon={getScoreIcon(evaluationResult.total_score)}
+                sectionScores={evaluationResult.section_scores}
+                executiveSummary={evaluationResult.executive_summary}
               />
               
               <PremiumUnlock 
                 isUnlocked={isPremiumUnlocked}
                 onUnlock={setIsPremiumUnlocked}
-                formData={formData}
-                score={totalScore}
+                evaluationId={evaluationResult.evaluation_id}
+                score={evaluationResult.total_score}
               />
             </div>
           )}
