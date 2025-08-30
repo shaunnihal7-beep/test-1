@@ -102,7 +102,7 @@ const ScoreDisplay = ({ score, verdict, icon, sectionScores, executiveSummary })
           <div className="bg-slate-800/50 rounded-lg p-6 text-left w-full">
             <h4 className="text-lg font-semibold text-white mb-3">Executive Summary</h4>
             <p className="text-slate-300 leading-relaxed">
-              {mockData.mockAnalyses.executiveSummary}
+              {executiveSummary || "Analysis completed. Your startup has been evaluated using our comprehensive scoring methodology."}
             </p>
           </div>
 
