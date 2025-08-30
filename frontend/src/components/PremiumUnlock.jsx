@@ -8,25 +8,42 @@ import { createPaymentIntent, unlockPremiumAnalysis } from '../services/vcTestAp
 
 const PremiumUnlock = ({ isUnlocked, onUnlock, evaluationId, score }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [premiumData, setPremiumData] = useState(null);
 
   const handleUnlockPremium = async () => {
     setIsProcessing(true);
     
     try {
-      // Simulate Stripe payment processing
+      // Create payment intent (in mock mode, this will simulate success)
+      const paymentResult = await createPaymentIntent(evaluationId);
+      
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error);
+      }
+
+      // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mock successful payment
+      // Unlock premium analysis (in mock mode, this will return mock data)
+      const unlockResult = await unlockPremiumAnalysis(evaluationId, paymentResult.data.payment_intent_id);
+      
+      if (!unlockResult.success) {
+        throw new Error(unlockResult.error);
+      }
+
+      setPremiumData(unlockResult.data);
       onUnlock(true);
+      
       toast({
         title: "Premium Unlocked! 🎉",
         description: "Your detailed analysis is now available.",
         duration: 5000
       });
     } catch (error) {
+      console.error('Payment error:', error);
       toast({
         title: "Payment Failed",
-        description: "Please try again or contact support.",
+        description: error.message || "Please try again or contact support.",
         variant: "destructive"
       });
     } finally {
