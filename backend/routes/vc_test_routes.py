@@ -99,7 +99,6 @@ async def evaluate_startup(request: VCEvaluationCreate):
         
         # Save to database
         result = await db.vc_evaluations.insert_one(evaluation.dict())
-        evaluation.id = str(result.inserted_id)
         
         return {
             "success": True,
