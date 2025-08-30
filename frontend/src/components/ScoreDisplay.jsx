@@ -110,25 +110,43 @@ const ScoreDisplay = ({ score, verdict, icon, sectionScores, executiveSummary })
           <div className="w-full">
             <h4 className="text-lg font-semibold text-white mb-4">Score Breakdown</h4>
             <div className="grid gap-3">
-              {[
-                { category: 'Founding Team', weight: 30, score: Math.round(score * 0.85) },
-                { category: 'Market Opportunity', weight: 25, score: Math.round(score * 0.92) },
-                { category: 'Problem/Solution Fit', weight: 20, score: Math.round(score * 0.88) },
-                { category: 'Business Model', weight: 15, score: Math.round(score * 0.91) },
-                { category: 'Competitive Advantage', weight: 10, score: Math.round(score * 0.79) }
-              ].map((item, index) => (
-                <div key={index} className="flex items-center justify-between bg-slate-800/30 rounded p-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-300">{item.category}</span>
-                    <Badge variant="outline" className="text-xs text-slate-400 border-slate-500">
-                      {item.weight}% weight
-                    </Badge>
+              {sectionScores && Object.entries(sectionScores).map(([key, sectionScore], index) => {
+                const categoryNames = {
+                  'founding-team': 'Founding Team',
+                  'market-opportunity': 'Market Opportunity', 
+                  'problem-solution-fit': 'Problem/Solution Fit',
+                  'competitive-advantage': 'Competitive Advantage',
+                  'business-model': 'Business Model',
+                  'validation-traction': 'Validation & Traction',
+                  'unit-economics': 'Unit Economics',
+                  'financials-capital': 'Financials & Capital'
+                };
+                
+                const weights = {
+                  'founding-team': 30,
+                  'market-opportunity': 25, 
+                  'problem-solution-fit': 20,
+                  'competitive-advantage': 10,
+                  'business-model': 15,
+                  'validation-traction': 25,
+                  'unit-economics': 20,
+                  'financials-capital': 15
+                };
+                
+                return (
+                  <div key={key} className="flex items-center justify-between bg-slate-800/30 rounded p-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-slate-300">{categoryNames[key] || key}</span>
+                      <Badge variant="outline" className="text-xs text-slate-400 border-slate-500">
+                        {weights[key] || 10}% weight
+                      </Badge>
+                    </div>
+                    <div className={`font-semibold ${getScoreColor(sectionScore * 10).split(' ')[0]}`}>
+                      {(sectionScore * 10).toFixed(1)}/100
+                    </div>
                   </div>
-                  <div className={`font-semibold ${getScoreColor(item.score).split(' ')[0]}`}>
-                    {item.score}/100
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
