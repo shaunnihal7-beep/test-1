@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { mockData } from '../data/mockData';
 
-const ScoreDisplay = ({ score, verdict, icon }) => {
+const ScoreDisplay = ({ score, verdict, icon, sectionScores, executiveSummary }) => {
   const [animatedScore, setAnimatedScore] = useState(0);
   const [isAnimating, setIsAnimating] = useState(true);
 
