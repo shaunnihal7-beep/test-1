@@ -81,19 +81,19 @@ const PremiumUnlock = ({ isUnlocked, onUnlock, evaluationId, score }) => {
             <div className="bg-slate-800/30 rounded-lg p-4 text-center">
               <h5 className="font-semibold text-white mb-2">Investment Readiness</h5>
               <div className="text-2xl font-bold text-cyan-400">
-                {score >= 80 ? 'Ready' : score >= 60 ? 'Near Ready' : 'Early Stage'}
+                {premiumData?.investment_readiness || (score >= 80 ? 'Ready' : score >= 60 ? 'Near Ready' : 'Early Stage')}
               </div>
             </div>
             <div className="bg-slate-800/30 rounded-lg p-4 text-center">
               <h5 className="font-semibold text-white mb-2">Recommended Round</h5>
               <div className="text-2xl font-bold text-cyan-400">
-                {score >= 80 ? 'Series A' : score >= 60 ? 'Seed' : 'Pre-Seed'}
+                {premiumData?.recommended_round || (score >= 80 ? 'Series A' : score >= 60 ? 'Seed' : 'Pre-Seed')}
               </div>
             </div>
             <div className="bg-slate-800/30 rounded-lg p-4 text-center">
               <h5 className="font-semibold text-white mb-2">Valuation Range</h5>
               <div className="text-2xl font-bold text-cyan-400">
-                {score >= 80 ? '$10M+' : score >= 60 ? '$3-10M' : '$0.5-3M'}
+                {premiumData?.valuation_range || (score >= 80 ? '$10M+' : score >= 60 ? '$3-10M' : '$0.5-3M')}
               </div>
             </div>
           </div>
@@ -101,11 +101,17 @@ const PremiumUnlock = ({ isUnlocked, onUnlock, evaluationId, score }) => {
           <div className="mt-6 bg-blue-900/20 border border-blue-700 rounded-lg p-4">
             <h5 className="font-semibold text-blue-300 mb-2">Next Steps Recommendation</h5>
             <ul className="text-blue-200 text-sm space-y-1">
-              <li>• Focus on customer validation and early traction metrics</li>
-              <li>• Strengthen competitive moats and IP protection</li>
-              <li>• Prepare detailed financial projections and unit economics</li>
-              <li>• Build strategic advisor network in target industry</li>
-              <li>• Develop comprehensive go-to-market strategy</li>
+              {premiumData?.recommendations?.map((rec, index) => (
+                <li key={index}>• {rec}</li>
+              )) || [
+                '• Focus on customer validation and early traction metrics',
+                '• Strengthen competitive moats and IP protection', 
+                '• Prepare detailed financial projections and unit economics',
+                '• Build strategic advisor network in target industry',
+                '• Develop comprehensive go-to-market strategy'
+              ].map((rec, index) => (
+                <li key={index}>{rec}</li>
+              ))}
             </ul>
           </div>
         </CardContent>
