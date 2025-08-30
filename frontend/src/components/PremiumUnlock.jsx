@@ -4,9 +4,9 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Lock, Unlock, CreditCard, CheckCircle, Star } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
-import { mockData } from '../data/mockData';
+import { createPaymentIntent, unlockPremiumAnalysis } from '../services/vcTestApi';
 
-const PremiumUnlock = ({ isUnlocked, onUnlock, formData, score }) => {
+const PremiumUnlock = ({ isUnlocked, onUnlock, evaluationId, score }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleUnlockPremium = async () => {
