@@ -72,7 +72,7 @@ const PremiumUnlock = ({ isUnlocked, onUnlock, evaluationId, score }) => {
             </h4>
             <div className="prose prose-slate prose-invert max-w-none">
               <div className="text-slate-300 leading-relaxed whitespace-pre-line">
-                {mockData.mockAnalyses.deepDiveAnalysis}
+                {premiumData?.deep_analysis || "Comprehensive analysis with detailed insights, recommendations, and strategic guidance for your startup's growth trajectory."}
               </div>
             </div>
           </div>
