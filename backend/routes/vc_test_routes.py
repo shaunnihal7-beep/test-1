@@ -195,6 +195,10 @@ async def get_evaluation(evaluation_id: str):
         if not evaluation:
             raise HTTPException(status_code=404, detail="Evaluation not found")
         
+        # Convert ObjectId to string for serialization
+        if '_id' in evaluation:
+            evaluation['_id'] = str(evaluation['_id'])
+        
         # Remove sensitive data
         evaluation.pop('form_data', None)
         evaluation.pop('csrf_token', None)
